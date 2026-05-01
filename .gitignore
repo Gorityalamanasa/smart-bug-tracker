@@ -1,0 +1,44 @@
+# Build outputs
+target/
+build/
+out/
+*.jar
+*.war
+*.class
+
+# Gradle
+.gradle/
+gradle/wrapper/gradle-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.project
+.classpath
+.settings/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+logs/
+
+# H2 Database
+*.db
+*.mv.db
+*.trace.db
+
+# Jenkins
+jenkins_home/
+
+# Docker
+docker-compose.override.yml
+
+# Environment
+.env

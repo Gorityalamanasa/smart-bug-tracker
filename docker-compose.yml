@@ -1,0 +1,50 @@
+# ============================================
+# Smart Bug Tracker — Docker Compose
+# App + Jenkins for CI/CD
+# ============================================
+
+services:
+  # Bug Tracker Application
+  bugtracker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bugtracker-app
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - JAVA_OPTS=-Xmx512m
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+    networks:
+      - bugtracker-net
+
+  # Jenkins CI/CD Server
+  jenkins:
+    image: jenkins/jenkins:lts
+    container_name: bugtracker-jenkins
+    ports:
+      - "9090:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins_data:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - JAVA_OPTS=-Xmx1024m
+    restart: unless-stopped
+    networks:
+      - bugtracker-net
+
+volumes:
+  jenkins_data:
+    driver: local
+
+networks:
+  bugtracker-net:
+    driver: bridge

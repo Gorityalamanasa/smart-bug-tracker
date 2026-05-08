@@ -2,7 +2,7 @@
 # Smart Bug Tracker — Docker Build
 # ============================================
 
-FROM eclipse-temurin:23-jre-noble
+FROM eclipse-temurin:17-jre-jammy
 WORKDIR /app
 COPY target/smart-bug-tracker-1.0.0.jar app.jar
 

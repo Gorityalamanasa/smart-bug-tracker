@@ -20,7 +20,7 @@
     <description>Smart Bug and Issue Tracking System with CI/CD Pipeline</description>
 
     <properties>
-        <java.version>23</java.version>
+        <java.version>17</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 

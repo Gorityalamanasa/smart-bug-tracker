@@ -49,7 +49,7 @@ pipeline {
             }
         }
 
-        stage('Build with Gradle') {
+        stage('Verify Gradle Build') {
             steps {
                 echo '🔨 Verifying Gradle build...'
                 bat 'gradlew.bat build -x test --no-daemon'

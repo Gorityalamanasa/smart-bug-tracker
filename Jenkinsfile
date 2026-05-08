@@ -26,14 +26,14 @@ pipeline {
         stage('Build with Maven') {
             steps {
                 echo '🔨 Building with Maven...'
-                bat 'mvn clean compile -q'
+                sh 'mvn clean compile -q'
             }
         }
 
         stage('Run Tests') {
             steps {
                 echo '🧪 Running unit tests...'
-                bat 'mvn test'
+                sh 'mvn test'
             }
             post {
                 always {
@@ -45,29 +45,22 @@ pipeline {
         stage('Package with Maven') {
             steps {
                 echo '📦 Packaging application...'
-                bat 'mvn package -DskipTests -q'
-            }
-        }
-
-        stage('Verify Gradle Build') {
-            steps {
-                echo '🔨 Verifying Gradle build...'
-                bat 'gradlew.bat build -x test --no-daemon'
+                sh 'mvn package -DskipTests -q'
             }
         }
 
         stage('Docker Build') {
             steps {
                 echo '🐳 Building Docker image...'
-                bat "docker build -t ${DOCKER_IMAGE} ."
+                sh "docker build -t ${DOCKER_IMAGE} ."
             }
         }
 
         stage('Deploy') {
             steps {
                 echo '🚀 Deploying application...'
-                bat 'docker-compose down --remove-orphans || true'
-                bat 'docker-compose up -d bugtracker'
+                sh 'docker-compose down --remove-orphans || true'
+                sh 'docker-compose up -d bugtracker'
             }
         }
 
@@ -75,7 +68,7 @@ pipeline {
             steps {
                 echo '❤️ Verifying deployment...'
                 sleep(time: 15, unit: 'SECONDS')
-                bat 'curl -f http://localhost:8080/api/health'
+                sh 'curl -f http://localhost:8080/api/health'
             }
         }
     }

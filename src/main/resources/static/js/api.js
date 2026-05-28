@@ -4,11 +4,21 @@
  */
 const API = {
   BASE: '/api',
+  actingUserId: null,
+
+  /** Set the current acting user ID (sent as header for RBAC) */
+  setActingUser(userId) {
+    this.actingUserId = userId;
+  },
 
   async request(endpoint, options = {}) {
     const url = `${this.BASE}${endpoint}`;
+    const headers = { 'Content-Type': 'application/json', ...options.headers };
+    if (this.actingUserId) {
+      headers['X-Acting-User-Id'] = this.actingUserId.toString();
+    }
     const config = {
-      headers: { 'Content-Type': 'application/json', ...options.headers },
+      headers,
       ...options,
     };
     try {

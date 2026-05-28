@@ -1,16 +1,29 @@
 /**
  * Smart Bug Tracker — Application Logic
  * Handles UI rendering, navigation, and user interactions.
+ * Includes Role-Based Access Control (RBAC).
  */
 const App = {
   currentView: 'dashboard',
   currentIssue: null,
   users: [],
   currentUserId: 1,
+  currentUserRole: 'ADMIN',
+
+  /**
+   * RBAC Permission Rules:
+   * ADMIN:     Full access — edit, delete, assign, change status on any issue
+   * DEVELOPER: Edit (own/assigned), change status (assigned), NO delete, NO assign
+   * TESTER:    Change status (verify/reopen only), NO edit, NO delete, NO assign
+   */
 
   async init() {
     this.users = await API.getUsers();
     this.renderUserSelector();
+    // Set initial role from first user
+    const initialUser = this.users.find(u => u.id === this.currentUserId);
+    if (initialUser) this.currentUserRole = initialUser.role;
+    API.setActingUser(this.currentUserId);
     this.bindNav();
     this.navigate('dashboard');
   },
@@ -44,7 +57,59 @@ const App = {
   renderUserSelector() {
     const sel = document.getElementById('current-user');
     sel.innerHTML = this.users.map(u => `<option value="${u.id}">${u.username} (${u.role})</option>`).join('');
-    sel.addEventListener('change', e => { this.currentUserId = Number(e.target.value); });
+    sel.addEventListener('change', e => {
+      this.currentUserId = Number(e.target.value);
+      const user = this.users.find(u => u.id === this.currentUserId);
+      this.currentUserRole = user ? user.role : 'TESTER';
+      API.setActingUser(this.currentUserId);
+      // Refresh current view to apply new role permissions
+      if (this.currentIssue && this.currentView !== 'dashboard' && this.currentView !== 'issues' && this.currentView !== 'create') {
+        this.viewIssue(this.currentIssue.id);
+      } else {
+        this.navigate(this.currentView);
+      }
+    });
+  },
+
+  // === RBAC HELPERS ===
+  getPermissions(issue) {
+    const role = this.currentUserRole;
+    const isAssignee = issue.assignee && issue.assignee.id === this.currentUserId;
+    const isReporter = issue.reporter && issue.reporter.id === this.currentUserId;
+
+    return {
+      canEdit: role === 'ADMIN' || (role === 'DEVELOPER' && (isAssignee || isReporter)),
+      canDelete: role === 'ADMIN',
+      canAssign: role === 'ADMIN',
+      canChangeStatus: role === 'ADMIN' || (role === 'DEVELOPER' && isAssignee) || role === 'TESTER',
+    };
+  },
+
+  /** Get allowed status options based on role */
+  getAllowedStatuses(issue) {
+    const role = this.currentUserRole;
+    const allStatuses = ['NEW','OPEN','IN_PROGRESS','RESOLVED','CLOSED'];
+
+    if (role === 'ADMIN') {
+      // Admin can attempt any transition (backend validates the transition rules)
+      return allStatuses;
+    }
+
+    if (role === 'DEVELOPER') {
+      // Developer can change status on assigned issues (backend validates transitions)
+      return allStatuses;
+    }
+
+    if (role === 'TESTER') {
+      // Tester can ONLY: RESOLVED→CLOSED/OPEN, CLOSED→OPEN
+      const testerAllowed = {
+        'RESOLVED': ['RESOLVED', 'CLOSED', 'OPEN'],
+        'CLOSED': ['CLOSED', 'OPEN'],
+      };
+      return testerAllowed[issue.status] || [];
+    }
+
+    return [];
   },
 
   // === DASHBOARD ===
@@ -130,18 +195,40 @@ const App = {
     }).join('');
   },
 
-  // === ISSUE DETAIL ===
+  // === ISSUE DETAIL (with RBAC) ===
   async viewIssue(id) {
     const main = document.getElementById('main-content');
     const [issue, comments] = await Promise.all([API.getIssue(id), API.getComments(id)]);
     this.currentIssue = issue;
+    this.currentView = 'detail';
     const reporter = issue.reporter ? issue.reporter.username : 'Unknown';
     const assignee = issue.assignee ? issue.assignee.username : 'Unassigned';
     const statusLabel = issue.status.replace('_', ' ');
 
-    const assigneeOptions = this.users.map(u => `<option value="${u.id}" ${issue.assignee && issue.assignee.id === u.id ? 'selected' : ''}>${u.username}</option>`).join('');
+    // --- RBAC: Determine permissions ---
+    const perms = this.getPermissions(issue);
+    const allowedStatuses = this.getAllowedStatuses(issue);
 
-    const statusOptions = ['NEW','OPEN','IN_PROGRESS','RESOLVED','CLOSED'].map(s => `<option value="${s}" ${issue.status === s ? 'selected' : ''}>${s.replace('_',' ')}</option>`).join('');
+    // Build status dropdown (only if user can change status AND has allowed options)
+    let statusHTML = '';
+    if (perms.canChangeStatus && allowedStatuses.length > 0) {
+      const statusOpts = allowedStatuses.map(s => `<option value="${s}" ${issue.status === s ? 'selected' : ''}>${s.replace('_',' ')}</option>`).join('');
+      statusHTML = `<select class="filter-select" id="status-select" onchange="App.updateStatus(${issue.id})">${statusOpts}</select>`;
+    }
+
+    // Build assignee dropdown (ADMIN only)
+    let assigneeHTML = '';
+    if (perms.canAssign) {
+      const assigneeOpts = this.users.map(u => `<option value="${u.id}" ${issue.assignee && issue.assignee.id === u.id ? 'selected' : ''}>${u.username}</option>`).join('');
+      assigneeHTML = `<select class="filter-select" id="assignee-select" onchange="App.updateAssignee(${issue.id})"><option value="">Unassigned</option>${assigneeOpts}</select>`;
+    }
+
+    // Build action buttons
+    const editBtn = perms.canEdit ? `<button class="btn btn-secondary btn-sm" onclick="App.showEditModal(${issue.id})">✏️ Edit</button>` : '';
+    const deleteBtn = perms.canDelete ? `<button class="btn btn-danger btn-sm" onclick="App.deleteIssue(${issue.id})">🗑️ Delete</button>` : '';
+
+    // Role indicator badge
+    const roleBadge = `<span class="badge" style="margin-left:auto;font-size:11px;padding:4px 10px;background:rgba(139,92,246,0.15);color:#a78bfa;border:1px solid rgba(139,92,246,0.3);">${this.currentUserRole}</span>`;
 
     main.innerHTML = `
       <button class="back-btn" onclick="App.navigate('issues')">← Back to Issues</button>
@@ -151,10 +238,11 @@ const App = {
           <h2>${this.esc(issue.title)}</h2>
         </div>
         <div class="action-bar">
-          <select class="filter-select" id="status-select" onchange="App.updateStatus(${issue.id})">${statusOptions}</select>
-          <select class="filter-select" id="assignee-select" onchange="App.updateAssignee(${issue.id})"><option value="">Unassigned</option>${assigneeOptions}</select>
-          <button class="btn btn-secondary btn-sm" onclick="App.showEditModal(${issue.id})">✏️ Edit</button>
-          <button class="btn btn-danger btn-sm" onclick="App.deleteIssue(${issue.id})">🗑️ Delete</button>
+          ${statusHTML}
+          ${assigneeHTML}
+          ${editBtn}
+          ${deleteBtn}
+          ${roleBadge}
         </div>
         <div class="issue-meta">
           <div class="meta-item"><label>Status</label><div class="meta-value"><span class="badge badge-${issue.status.toLowerCase()}">${statusLabel}</span></div></div>
@@ -223,7 +311,13 @@ const App = {
 
   // === CREATE / EDIT ===
   renderCreateForm(el) {
+    // Only ADMIN can assign during creation
+    const canAssign = this.currentUserRole === 'ADMIN';
     const assigneeOptions = this.users.map(u => `<option value="${u.id}">${u.username}</option>`).join('');
+    const assignField = canAssign
+      ? `<div class="form-group"><label>Assign To</label><select class="form-control" id="f-assignee"><option value="">Unassigned</option>${assigneeOptions}</select></div>`
+      : '';
+
     el.innerHTML = `
       <div class="section-header"><h1 class="section-title">Create New Issue</h1></div>
       <div class="modal" style="position:static;transform:none;max-width:100%;border:1px solid var(--border-glass)">
@@ -232,7 +326,7 @@ const App = {
           <div class="form-group"><label>Description</label><textarea class="form-control" id="f-desc"></textarea></div>
           <div class="form-row">
             <div class="form-group"><label>Priority</label><select class="form-control" id="f-priority"><option value="MEDIUM">Medium</option><option value="CRITICAL">Critical</option><option value="HIGH">High</option><option value="LOW">Low</option></select></div>
-            <div class="form-group"><label>Assign To</label><select class="form-control" id="f-assignee"><option value="">Unassigned</option>${assigneeOptions}</select></div>
+            ${assignField}
           </div>
           <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:24px">
             <button type="button" class="btn btn-secondary" onclick="App.navigate('issues')">Cancel</button>
@@ -251,7 +345,8 @@ const App = {
     };
     try {
       const issue = await API.createIssue(data, this.currentUserId);
-      const assigneeId = document.getElementById('f-assignee').value;
+      const assigneeEl = document.getElementById('f-assignee');
+      const assigneeId = assigneeEl ? assigneeEl.value : '';
       if (assigneeId) await API.assignIssue(issue.id, Number(assigneeId));
       this.toast('Issue created!', 'success');
       this.navigate('issues');
@@ -261,6 +356,12 @@ const App = {
   showEditModal(id) {
     const i = this.currentIssue;
     if (!i) return;
+    // Double-check permission
+    const perms = this.getPermissions(i);
+    if (!perms.canEdit) {
+      this.toast('You do not have permission to edit this issue', 'error');
+      return;
+    }
     const overlay = document.getElementById('modal-overlay');
     document.getElementById('modal-body').innerHTML = `
       <form onsubmit="App.submitEdit(event, ${id})">

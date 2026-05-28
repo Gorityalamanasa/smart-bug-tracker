@@ -2,7 +2,7 @@
 
 A full-stack bug tracking application with CI/CD pipeline integration, built as a DevOps demonstration project.
 
-![Java](https://img.shields.io/badge/Java-23-orange) ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.4.5-green) ![Maven](https://img.shields.io/badge/Maven-3.9.9-red) ![Docker](https://img.shields.io/badge/Docker-Ready-blue) ![Jenkins](https://img.shields.io/badge/Jenkins-CI%2FCD-yellow)
+![Java](https://img.shields.io/badge/Java-17-orange) ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.4.5-green) ![MySQL](https://img.shields.io/badge/MySQL-8.0-blue) ![Maven](https://img.shields.io/badge/Maven-3.9.9-red) ![Docker](https://img.shields.io/badge/Docker-Ready-blue) ![Jenkins](https://img.shields.io/badge/Jenkins-CI%2FCD-yellow)
 
 ---
 
@@ -36,7 +36,7 @@ A full-stack bug tracking application with CI/CD pipeline integration, built as 
 ├──────────────────────────────────────────────┤
 │          Spring Data JPA Repositories         │
 ├──────────────────────────────────────────────┤
-│           H2 In-Memory Database              │
+│        MySQL Database (H2 for tests)         │
 └──────────────────────────────────────────────┘
 ```
 
@@ -45,8 +45,9 @@ A full-stack bug tracking application with CI/CD pipeline integration, built as 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Java 23+
+- Java 17+
 - Maven 3.9+
+- MySQL 8.0 (running on localhost:3306)
 - Docker (optional, for containerized deployment)
 
 ### Run Locally
@@ -146,9 +147,10 @@ Devops_Project/
 │   ├── repository/                    # Data access
 │   └── config/                        # Web config & data seeding
 ├── src/main/resources/
-│   ├── application.properties         # App configuration
+│   ├── application.properties         # MySQL configuration
 │   └── static/                        # Frontend (HTML/CSS/JS)
-├── src/test/                          # Unit & integration tests
+├── src/test/
+│   └── resources/application.properties  # H2 config for tests
 ├── pom.xml                            # Maven build
 ├── build.gradle                       # Gradle build
 ├── Dockerfile                         # Multi-stage Docker build

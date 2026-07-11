@@ -28,4 +28,7 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
     long countByPriority(Priority priority);
 
     List<Issue> findAllByOrderByCreatedAtDesc();
+
+    /** Fetch recent issues for AI duplicate comparison */
+    List<Issue> findTop50ByOrderByCreatedAtDesc();
 }

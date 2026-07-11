@@ -9,6 +9,7 @@ import java.util.Map;
 
 /**
  * REST controller for dashboard statistics and health check.
+ * Dashboard is protected by JWT. Health check is public.
  */
 @RestController
 @RequestMapping("/api")
@@ -20,19 +21,19 @@ public class DashboardController {
         this.issueService = issueService;
     }
 
-    /** GET /api/dashboard/stats — Get dashboard statistics */
+    /** GET /api/dashboard/stats — Get dashboard statistics (requires JWT) */
     @GetMapping("/dashboard/stats")
     public ResponseEntity<Map<String, Object>> getDashboardStats() {
         return ResponseEntity.ok(issueService.getDashboardStats());
     }
 
-    /** GET /api/health — Health check endpoint */
+    /** GET /api/health — Health check endpoint (public, no JWT required) */
     @GetMapping("/health")
     public ResponseEntity<Map<String, String>> healthCheck() {
         return ResponseEntity.ok(Map.of(
             "status", "UP",
             "application", "Smart Bug Tracker",
-            "version", "1.0.0"
+            "version", "2.0.0"
         ));
     }
 }

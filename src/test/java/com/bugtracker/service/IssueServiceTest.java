@@ -74,7 +74,7 @@ class IssueServiceTest {
     @Test
     void shouldAutoTransitionToOpenOnAssignment() {
         // Create a user to assign
-        User dev = userRepository.save(new User("test_assign_dev", "testassign@test.com", Role.DEVELOPER));
+        User dev = userRepository.save(new User("test_assign_dev", "testassign@test.com", "password", Role.DEVELOPER));
 
         Issue issue = new Issue();
         issue.setTitle("Auto Transition Test");

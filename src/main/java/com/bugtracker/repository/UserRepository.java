@@ -1,6 +1,7 @@
 package com.bugtracker.repository;
 
 import com.bugtracker.model.User;
+import com.bugtracker.model.enums.Expertise;
 import com.bugtracker.model.enums.Role;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -18,4 +19,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmail(String email);
 
     List<User> findByRole(Role role);
+
+    List<User> findByExpertise(Expertise expertise);
+
+    List<User> findByRoleAndExpertise(Role role, Expertise expertise);
 }

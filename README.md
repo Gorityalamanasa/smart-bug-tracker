@@ -1,197 +1,320 @@
-# 🐛 Smart Bug & Issue Tracking System
+# 🐛 Smart Bug Tracker
 
-A full-stack bug tracking application with CI/CD pipeline integration, built as a DevOps demonstration project.
+**AI-Assisted Bug Triage & Issue Management System**
 
-![Java](https://img.shields.io/badge/Java-17-orange) ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.4.5-green) ![MySQL](https://img.shields.io/badge/MySQL-8.0-blue) ![Maven](https://img.shields.io/badge/Maven-3.9.9-red) ![Docker](https://img.shields.io/badge/Docker-Ready-blue) ![Jenkins](https://img.shields.io/badge/Jenkins-CI%2FCD-yellow)
+A full-stack bug tracking application with **JWT authentication**, **role-based access control (RBAC)**, and **AI-powered bug triage** using Google Gemini. Built with Spring Boot, MySQL, and vanilla JavaScript.
 
 ---
 
-## 📋 Features
+## 🔑 Authentication — JWT Login Flow
 
-- **Issue Management** — Create, update, assign, and track bugs with full lifecycle (NEW → OPEN → IN_PROGRESS → RESOLVED → CLOSED)
-- **Priority Tracking** — CRITICAL, HIGH, MEDIUM, LOW priority levels with color-coded badges
-- **User Roles** — ADMIN, DEVELOPER, TESTER with role-based access
-- **Comments** — Add discussion threads on any issue
-- **Dashboard** — Real-time statistics with interactive charts
-- **REST API** — Full CRUD endpoints for programmatic access
-- **Search & Filter** — Filter issues by status, priority, or full-text search
-- **Dark Theme UI** — Modern glassmorphism design with micro-animations
+The application uses **stateless JWT-based authentication**. No sessions are stored on the server.
+
+### Login Flow
+
+```
+User opens app → Login page shown → Enters username/password
+   → POST /api/auth/login → Backend verifies with BCrypt
+   → JWT generated (contains userId, username, role)
+   → JWT stored in browser localStorage
+   → User redirected to role-specific dashboard
+```
+
+### Key Details
+
+| Feature | Implementation |
+|---------|---------------|
+| Password hashing | BCrypt via `PasswordEncoder` |
+| Token format | JWT (HMAC-SHA256 signed) |
+| Token expiry | 24 hours |
+| Token storage | `localStorage` (frontend) |
+| User identification | From `SecurityContext` (not UI selection) |
+| Logout | Clears JWT from `localStorage` |
+| Session expired | Auto-redirect to login page on 401 |
+
+### Default Credentials
+
+All seeded users share the password: **`password123`**
+
+| Username | Role | Expertise |
+|----------|------|-----------|
+| `admin` | ADMIN | — |
+| `rahul` | DEVELOPER | BACKEND |
+| `priya` | DEVELOPER | FRONTEND |
+| `arjun` | DEVELOPER | DATABASE |
+| `neha` | DEVELOPER | FULL_STACK |
+| `tester1` | TESTER | — |
+| `tester2` | TESTER | — |
+| `tester3` | TESTER | — |
+
+---
+
+## 🛡️ Role-Based Access Control (RBAC)
+
+### ADMIN
+
+- ✅ View **all** issues
+- ✅ View AI triage suggestions
+- ✅ Accept, modify, or ignore AI suggestions
+- ✅ Assign issues to developers
+- ✅ View dashboard analytics
+- ✅ Create, edit, delete any issue
+- ✅ View full duplicate details (Bug ID + similarity)
+
+### DEVELOPER
+
+- ✅ View only **assigned** issues
+- ✅ Update issue status (on assigned issues)
+- ✅ Add comments
+- ❌ Cannot create issues
+- ❌ Cannot assign issues
+- ❌ Cannot accept/reject AI triage
+- ❌ Cannot delete issues
+
+### TESTER
+
+- ✅ Create issues (triggers AI triage automatically)
+- ✅ View only **self-reported** issues
+- ✅ Verify resolved issues (RESOLVED → CLOSED)
+- ✅ Reopen issues (RESOLVED → REOPENED)
+- ✅ Add comments
+- ⚠️ Can see duplicate warning + similarity %, but **NOT** the duplicate bug ID
+- ❌ Cannot edit issues
+- ❌ Cannot assign issues
+- ❌ Cannot view other testers' issues
+
+### API-Level Security
+
+```
+If TESTER calls /api/issues/{id}/assign → 403 Forbidden
+If DEVELOPER calls /api/issues/{id}/accept-triage → 403 Forbidden
+If token expired → 401 Unauthorized → Auto-redirect to login
+```
+
+---
+
+## 🤖 AI-Assisted Bug Triage Workflow
+
+### Step 1: Tester Creates Issue
+
+```
+Tester logs in → Navigates to "New Issue" → Fills form:
+  - Title
+  - Description
+  - Steps to Reproduce
+  - Expected Result
+  - Actual Result
+→ Clicks "Create & Analyze with AI"
+```
+
+### Step 2: Backend AI Analysis
+
+```
+Backend receives issue → Fetches last 50 issues from DB
+→ Sends to AI (Gemini API):
+   - New issue: title, description, steps, expected, actual
+   - Previous issues: ID, title, description (truncated)
+→ AI returns suggestions
+→ Suggestions stored on issue (NOT automatically applied)
+```
+
+**Important:** AI never accesses the database directly. The backend provides the context.
+
+### Step 3: AI Returns
+
+| Field | Example |
+|-------|---------|
+| Optimized Summary | "Login form crashes with XSS input" |
+| Suggested Priority | `CRITICAL` |
+| Suggested Expertise | `BACKEND` |
+| Possible Duplicate Bug ID | `#3` |
+| Duplicate Similarity | `72%` |
+| Reason | "Contains crash keywords, XSS vulnerability..." |
+| Missing Information | "Missing: Browser version, OS details" |
+
+### Step 4: Triage Status
+
+- `READY_FOR_TRIAGE` — Complete bug report, ready for admin review
+- `NEEDS_MORE_INFO` — AI detected missing fields (steps, expected result, etc.)
+
+### Step 5: Fallback (If AI API Fails)
+
+Rule-based keyword matching is used as fallback:
+
+| Keywords | Suggested Priority/Expertise |
+|----------|------------------------------|
+| crash, data loss, security, vulnerability | CRITICAL |
+| payment failed, 500, authentication, broken | HIGH |
+| typo, cosmetic, minor, font | LOW |
+| api, endpoint, server, controller | BACKEND |
+| css, button, layout, page, ui | FRONTEND |
+| database, query, sql, hibernate | DATABASE |
+
+Issue creation **never fails** due to AI failure.
+
+---
+
+## 👨‍💼 Admin Issue Review Flow
+
+### Step-by-Step
+
+1. Admin logs in with JWT
+2. Navigates to Issues → Clicks on specific issue (e.g., Bug #15)
+3. Issue Detail page opens
+4. **AI Suggestions panel** is displayed
+
+### AI Suggestions Panel Shows
+
+- 📝 Optimized Summary
+- 📊 Suggested Priority (with Accept button)
+- 🎯 Suggested Expertise
+- 🔍 Possible Duplicate (with similarity % and link to duplicate)
+- 💡 AI Reasoning
+- ⚠️ Missing Information warnings
+
+### Admin Actions
+
+| Action | Description |
+|--------|-------------|
+| **Accept AI Priority** | Copies AI-suggested priority to actual priority |
+| **View Matching Devs** | Shows developers matching AI-suggested expertise |
+| **Assign Developer** | Admin picks final developer from matching list |
+| **Ignore Suggestions** | Keep current values, don't apply AI suggestions |
+
+### Developer Matching Logic
+
+```
+AI suggests BACKEND expertise →
+  Show: Rahul (BACKEND), Neha (FULL_STACK)
+  
+If no matching developer exists →
+  Show: All developers as fallback
+```
+
+**AI never auto-assigns developers. Admin is always the final decision maker.**
+
+---
+
+## 🔒 Duplicate Detection Security
+
+| Role | What They See |
+|------|---------------|
+| TESTER | ⚠️ "Possible Duplicate Found" + similarity % only. Cannot see duplicate Bug ID or open another tester's issue. |
+| DEVELOPER | Full duplicate details only for **assigned** issues |
+| ADMIN | Full duplicate details for all issues (Bug ID + link) |
 
 ---
 
 ## 🏗️ Architecture
 
 ```
-┌──────────────────────────────────────────────┐
-│              Frontend (HTML/CSS/JS)           │
-│         Served from /static directory         │
-├──────────────────────────────────────────────┤
-│           REST API Controllers               │
-│    IssueController · UserController          │
-│  CommentController · DashboardController     │
-├──────────────────────────────────────────────┤
-│             Service Layer                    │
-│   Business logic · Status transitions        │
-│   Assignment · Dashboard stats               │
-├──────────────────────────────────────────────┤
-│          Spring Data JPA Repositories         │
-├──────────────────────────────────────────────┤
-│        MySQL Database (H2 for tests)         │
-└──────────────────────────────────────────────┘
+Frontend (Vanilla JS)
+  ↕ REST API (JSON + JWT Bearer token)
+Backend (Spring Boot)
+  ├── Controller → Service → Repository (Clean layered architecture)
+  ├── Security: JWT filter → SecurityContext → Role check
+  ├── AI Triage: AiTriageService → Gemini API / Rule-based fallback
+  └── Database: MySQL (JPA/Hibernate)
 ```
+
+### Key Files
+
+| Layer | Files |
+|-------|-------|
+| **Models** | `User.java`, `Issue.java`, `Comment.java` |
+| **Enums** | `Role`, `Status`, `Priority`, `Expertise`, `TriageStatus` |
+| **Security** | `SecurityConfig`, `JwtTokenProvider`, `JwtAuthenticationFilter`, `CustomUserDetails` |
+| **Controllers** | `AuthController`, `IssueController`, `CommentController`, `DashboardController`, `UserController` |
+| **Services** | `IssueService`, `AiTriageService`, `UserService`, `CommentService` |
+| **Repositories** | `IssueRepository`, `UserRepository`, `CommentRepository` |
+| **Config** | `SecurityConfig`, `DataInitializer`, `WebConfig` |
+| **Frontend** | `index.html`, `app.js`, `api.js`, `style.css` |
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Running the Application
 
 ### Prerequisites
+
 - Java 17+
-- Maven 3.9+
-- MySQL 8.0 (running on localhost:3306)
-- Docker (optional, for containerized deployment)
+- MySQL 8.0+
+- Maven 3.8+
 
-### Run Locally
+### Setup
 
-```bash
-# Clone the repository
-git clone <repository-url>
-cd Devops_Project
+1. Create MySQL database:
+   ```sql
+   CREATE DATABASE bugtracker;
+   ```
 
-# Build and run with Maven
-mvn clean package -DskipTests
-mvn spring-boot:run
+2. Update `src/main/resources/application.properties`:
+   ```properties
+   spring.datasource.username=root
+   spring.datasource.password=your_password
+   ```
 
-# OR run the JAR directly
-java -jar target/smart-bug-tracker-1.0.0.jar
-```
+3. (Optional) Set Gemini API key for AI triage:
+   ```properties
+   gemini.api.key=YOUR_API_KEY
+   ```
+   If not set, rule-based fallback is used automatically.
 
-Open **http://localhost:8080** in your browser.
+4. Run:
+   ```bash
+   ./mvnw spring-boot:run
+   ```
 
-### Run with Docker
-
-```bash
-# Build and start with Docker Compose
-docker-compose up -d bugtracker
-
-# View logs
-docker-compose logs -f bugtracker
-
-# Stop
-docker-compose down
-```
-
-### Run with Gradle
-
-```bash
-# Using Gradle wrapper
-./gradlew bootRun
-
-# Or build and run JAR
-./gradlew bootJar
-java -jar build/libs/smart-bug-tracker-1.0.0.jar
-```
+5. Open: [http://localhost:8080](http://localhost:8080)
 
 ---
 
-## 📡 API Reference
+## 💬 Example Interview Explanation
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/issues` | List all issues (supports `?status=`, `?priority=`, `?assigneeId=`) |
-| `GET` | `/api/issues/{id}` | Get issue details |
-| `POST` | `/api/issues?reporterId={id}` | Create new issue |
-| `PUT` | `/api/issues/{id}` | Update issue |
-| `PATCH` | `/api/issues/{id}/status` | Change status (`{"status": "OPEN"}`) |
-| `PATCH` | `/api/issues/{id}/assign` | Assign issue (`{"assigneeId": 2}`) |
-| `DELETE` | `/api/issues/{id}` | Delete issue |
-| `GET` | `/api/issues/{id}/comments` | List comments |
-| `POST` | `/api/issues/{id}/comments` | Add comment (`{"authorId": 1, "content": "..."}`) |
-| `GET` | `/api/users` | List users (supports `?role=DEVELOPER`) |
-| `GET` | `/api/dashboard/stats` | Dashboard statistics |
-| `GET` | `/api/health` | Health check |
+> **Q: How does your Smart Bug Tracker handle authentication?**
+>
+> We use JWT-based stateless authentication. When a user logs in with their username and password, the backend verifies the credentials using BCrypt and generates a JWT token containing the userId, username, and role. This token is stored in the browser's localStorage and sent with every API request in the Authorization header as a Bearer token. The backend extracts the user identity from the SecurityContext — we never rely on UI-side role selection.
 
----
+> **Q: How does the AI-assisted triage work?**
+>
+> When a tester creates a bug report, the backend fetches the last 50 issues from the database and sends them along with the new issue to Google Gemini API. The AI analyzes the bug and returns suggestions — optimized summary, priority, expertise area, possible duplicates, and missing information. These are stored as suggestions only — the admin reviews and decides whether to accept, modify, or ignore them. If the AI API is unavailable, a rule-based keyword matching fallback ensures issue creation never fails.
 
-## 🔄 CI/CD Pipeline
+> **Q: How do you handle role-based access?**
+>
+> We have three roles: Admin, Developer, and Tester. The backend enforces access at the API level using Spring Security. Testers can only see their own issues and cannot see other testers' full bug details. Developers can only see issues assigned to them. Admins have full access. If a tester tries to call an admin-only API like assign, they get a 403 Forbidden response. The frontend also hides/shows UI elements based on the role, but the backend is the source of truth for authorization.
 
-### Jenkins Pipeline Stages
-
-```
-Checkout → Build (Maven) → Test → Package → Build (Gradle) → Docker Build → Deploy → Health Check
-```
-
-### Setup Jenkins
-
-```bash
-# Start Jenkins with Docker Compose
-docker-compose up -d jenkins
-
-# Access Jenkins at http://localhost:9090
-# Get initial admin password:
-docker-compose exec jenkins cat /var/jenkins_home/secrets/initialAdminPassword
-```
-
-Configure a **Pipeline** job pointing to the `Jenkinsfile` in the repository root.
-
----
-
-## 🗂️ Project Structure
-
-```
-Devops_Project/
-├── src/main/java/com/bugtracker/
-│   ├── BugTrackerApplication.java     # Entry point
-│   ├── controller/                    # REST endpoints
-│   ├── service/                       # Business logic
-│   ├── model/                         # JPA entities & enums
-│   ├── repository/                    # Data access
-│   └── config/                        # Web config & data seeding
-├── src/main/resources/
-│   ├── application.properties         # MySQL configuration
-│   └── static/                        # Frontend (HTML/CSS/JS)
-├── src/test/
-│   └── resources/application.properties  # H2 config for tests
-├── pom.xml                            # Maven build
-├── build.gradle                       # Gradle build
-├── Dockerfile                         # Multi-stage Docker build
-├── docker-compose.yml                 # App + Jenkins orchestration
-├── Jenkinsfile                        # CI/CD pipeline definition
-└── docs/                              # Documentation
-```
+> **Q: How does duplicate detection work securely?**
+>
+> Duplicate detection happens entirely inside the backend — the AI or rule-based engine compares the new issue against previous issues using Jaccard similarity. Testers see only a warning with the similarity percentage but cannot see the duplicate bug ID or access another tester's issue. Only admins and assigned developers can see the full duplicate details. This ensures data isolation between testers while still providing useful duplicate warnings.
 
 ---
 
 ## 🧪 Testing
 
+Run tests:
 ```bash
-# Run all tests with Maven
-mvn test
-
-# Run all tests with Gradle
-./gradlew test
+./mvnw test
 ```
 
-**13 tests** covering:
-- Application context loading
-- Issue CRUD operations
-- Status transition validation
-- Auto-assignment behavior
-- Dashboard statistics
-- Health check endpoint
+Tests use H2 in-memory database with separate `test/resources/application.properties`.
 
 ---
 
-## 🌿 Git Branching Strategy
+## 🐳 Docker
 
+```bash
+docker-compose up --build
 ```
-main ──────────────────── Production-ready code
-  └── develop ─────────── Integration branch
-        ├── feature/*  ── Feature branches
-        └── release/*  ── Release candidates
-```
+
+See `Dockerfile` and `docker-compose.yml` for container configuration.
 
 ---
 
-## 📝 License
+## 📋 Status Workflow
 
-This project is built for educational and DevOps demonstration purposes.
+```
+NEW → OPEN → IN_PROGRESS → RESOLVED → CLOSED
+                  ↑              ↓
+                  ←── REOPENED ←──
+```
+
+Valid transitions are enforced by the backend. Invalid transitions return a 400 error.

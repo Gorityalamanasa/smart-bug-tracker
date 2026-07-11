@@ -1,6 +1,6 @@
 package com.bugtracker.controller;
 
-import com.bugtracker.model.Issue;
+import com.bugtracker.dto.IssueCreateRequest;
 import com.bugtracker.model.enums.Priority;
 import com.bugtracker.model.enums.Status;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -15,11 +15,14 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import static org.hamcrest.Matchers.*;
 
+import org.springframework.security.test.context.support.WithUserDetails;
+
 /**
  * Integration tests for Issue REST endpoints.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
+@WithUserDetails("admin")
 class IssueControllerTest {
 
     @Autowired
@@ -51,14 +54,13 @@ class IssueControllerTest {
 
     @Test
     void shouldCreateIssue() throws Exception {
-        Issue issue = new Issue();
-        issue.setTitle("Test Issue from JUnit");
-        issue.setDescription("This is a test issue created by automated tests");
-        issue.setPriority(Priority.LOW);
+        IssueCreateRequest request = new IssueCreateRequest();
+        request.setTitle("Test Issue from JUnit");
+        request.setDescription("This is a test issue created by automated tests");
 
         mockMvc.perform(post("/api/issues")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(issue)))
+                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.title").value("Test Issue from JUnit"))
                 .andExpect(jsonPath("$.status").value("NEW"));

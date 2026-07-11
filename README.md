@@ -268,25 +268,6 @@ Backend (Spring Boot)
 
 ---
 
-## 💬 Example Interview Explanation
-
-> **Q: How does your Smart Bug Tracker handle authentication?**
->
-> We use JWT-based stateless authentication. When a user logs in with their username and password, the backend verifies the credentials using BCrypt and generates a JWT token containing the userId, username, and role. This token is stored in the browser's localStorage and sent with every API request in the Authorization header as a Bearer token. The backend extracts the user identity from the SecurityContext — we never rely on UI-side role selection.
-
-> **Q: How does the AI-assisted triage work?**
->
-> When a tester creates a bug report, the backend fetches the last 50 issues from the database and sends them along with the new issue to Google Gemini API. The AI analyzes the bug and returns suggestions — optimized summary, priority, expertise area, possible duplicates, and missing information. These are stored as suggestions only — the admin reviews and decides whether to accept, modify, or ignore them. If the AI API is unavailable, a rule-based keyword matching fallback ensures issue creation never fails.
-
-> **Q: How do you handle role-based access?**
->
-> We have three roles: Admin, Developer, and Tester. The backend enforces access at the API level using Spring Security. Testers can only see their own issues and cannot see other testers' full bug details. Developers can only see issues assigned to them. Admins have full access. If a tester tries to call an admin-only API like assign, they get a 403 Forbidden response. The frontend also hides/shows UI elements based on the role, but the backend is the source of truth for authorization.
-
-> **Q: How does duplicate detection work securely?**
->
-> Duplicate detection happens entirely inside the backend — the AI or rule-based engine compares the new issue against previous issues using Jaccard similarity. Testers see only a warning with the similarity percentage but cannot see the duplicate bug ID or access another tester's issue. Only admins and assigned developers can see the full duplicate details. This ensures data isolation between testers while still providing useful duplicate warnings.
-
----
 
 ## 🧪 Testing
 

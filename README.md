@@ -3,7 +3,18 @@
 A full-stack **AI-powered Bug Management System** built using **Spring Boot, Spring Security, JWT, MySQL, Docker, Jenkins, and Google Gemini AI**. The application streamlines bug reporting, assignment, and resolution with secure role-based access and AI-powered issue analysis.
 
 ---
+## 📂 GitHub Repository
 
+https://github.com/Gorityalamanasa/your-repository
+
+## 🚀 Local Deployment
+
+Application:
+http://localhost:8080
+
+Jenkins:
+http://localhost:9090
+---
 ## 🚀 Features
 
 - 🔐 JWT Authentication with Spring Security

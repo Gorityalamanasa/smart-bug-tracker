@@ -5,7 +5,7 @@ A full-stack **AI-powered Bug Management System** built using **Spring Boot, Spr
 ---
 ## 📂 GitHub Repository
 
-https://github.com/Gorityalamanasa/your-repository
+https://github.com/Gorityalamanasa/smart-bug-tracker
 
 ## 🚀 Local Deployment
 
@@ -152,15 +152,6 @@ gemini.api.key=
 
 ---
 
-## 📌 Interview Highlights
-
-- Implemented JWT Authentication using Spring Security.
-- Developed 15+ REST APIs following a layered architecture.
-- Integrated Google Gemini AI for intelligent issue analysis.
-- Implemented role-based access for Admin, Developer, and Tester.
-- Automated build and deployment using Docker and Jenkins.
-
----
 
 ## 👨‍💻 Author
 

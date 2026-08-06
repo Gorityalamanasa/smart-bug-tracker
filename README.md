@@ -127,7 +127,10 @@ git clone <repository-url>
 
 cd smart-bug-tracker
 
-./mvnw spring-boot:run
+mvn spring-boot:run
+
+
+
 ```
 
 Open:
